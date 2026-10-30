@@ -1,0 +1,3 @@
+import {NextResponse} from 'next/server';import {z} from 'zod';import {auditMaster} from '@/lib/engine/master-audit';
+const schema=z.object({rows:z.array(z.record(z.unknown())).max(120000),belowCostTolerance:z.number().min(0).max(100000).optional()});
+export async function POST(request:Request){try{const p=schema.safeParse(await request.json());if(!p.success)return NextResponse.json({error:'Invalid request',details:p.error.flatten()},{status:400});const findings=auditMaster(p.data.rows,p.data.belowCostTolerance??0);return NextResponse.json({ok:true,count:findings.length,findings});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Audit failed'},{status:500});}}
