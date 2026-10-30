@@ -1,0 +1,1 @@
+import Link from 'next/link';export default function Page(){return <main className="shell"><Link href="/">← Stocker</Link><h1>Item templates</h1><p className="muted">Creation, activation, description changes, GP% and approvals.</p><section className="panel">Template editor, PDF generation and custom Excel layout support pending.</section></main>}
