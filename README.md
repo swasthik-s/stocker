@@ -1,37 +1,72 @@
 # Stocker
 
-TypeScript/Next.js rebuild of [stk-adj](https://github.com/swasthik-s/stk-adj), targeting Vercel with no separately hosted Python runtime.
-
-> **Migration foundation only.** Do not use for live stock adjustments until all feature parity and differential tests pass.
+A TypeScript / Next.js rebuild of [stk-adj](https://github.com/swasthik-s/stk-adj), designed for Vercel and MongoDB Atlas without a Python backend.
 
 ## Stack
-Next.js App Router, TypeScript, MongoDB Atlas, ExcelJS, PDF.js/pdf-lib, Zod, Vitest and Vercel.
 
-## Run
-Node.js 20+. Run `npm install`, copy `.env.example` to `.env.local`, configure it, then `npm run dev`. Checks: `npm run typecheck && npm test && npm run build`.
+- Next.js 15 App Router + TypeScript
+- shadcn/ui component conventions (New York style), Radix UI primitives, Tailwind CSS v4 and Lucide icons
+- MongoDB Atlas (stockadj database; legacy collection names retained)
+- SheetJS / ExcelJS for spreadsheet import and export
+- PDF.js and pdf-lib for PDF workflows
+- Vitest regression tests
 
-## Legacy feature parity
-| Feature | Status |
+## Current migration build
+
+| Area | Current state |
 |---|---|
-| Negative-stock overview/category totals/concentration/dead barcodes | Pending |
-| Conservative bundle-break and wrong-sale matcher | Initial TypeScript port; differential validation pending |
-| Candidate selection/review/manual pair/conversion/cost drift | Pending |
-| Signed verification workflow | Pending |
-| XLSX output and iTrade TXT import | Pending |
-| Master sheet audit | Pending |
-| Digital PDF tables, scanned OCR, invoice parsing and reconciliation | Pending |
-| Item creation/activation/description templates and GP% | Pending |
-| Uploaded Excel layout scan/mapping/style-preserving fill | Pending |
-| Sessions/snapshots/runs/batches/archive/restore | Pending |
-| Settings, retention, defaults and authentication | Defaults documented; UI pending |
+| Responsive application shell and dashboard | Implemented |
+| shadcn/ui component foundation | Implemented: button, card, badge, input, table, checkbox, select, dialog, separator |
+| Negative report + master workbook import | Browser-side CSV/XLS/XLSX import |
+| Bundle-break matcher | TypeScript port with conservative gates and inverted token index; regression tests added |
+| Wrong-sale matcher | TypeScript port with strict product/variant/price gates; regression tests added |
+| Manual pairing | Explicit operator override with stock and conversion checks |
+| iTrade TXT output | Single-item quantity is positive; outer quantity is negative; 7-decimal cost formatting |
+| Master audit | Negative stock, below-cost, missing barcode/name, duplicate barcode, invalid cost |
+| Category breakdown | Negative stock count, quantity and value |
+| Matching run history | MongoDB runs write and history listing |
+| Settings | MongoDB app_settings read/write |
+| Item templates | Editable item worksheet and GP% calculator; XLSX draft export |
+| PDF tools | Digital/selectable text extraction and XLSX export |
+| Scanned OCR + invoice reconciliation | Not yet ported; no OCR-derived import is enabled |
+| Original PDF template generation and custom workbook layout preservation | Not yet ported |
+| Full session/snapshot save/restore and batch file storage | Not yet ported |
+| API access control | Protected MongoDB APIs require STOCKER_API_TOKEN; full user roles/session authentication remains pending |
 
-## Matcher invariants
-Candidate suggestions only; never posts adjustments. Preserve description normalization, size-unit canonicalization, pack-count extraction, class/brand/leading-token gates, size/apparel/model/variant conflict rejection, active/positive-stock checks, cost corroboration for metadata-only pack quantities, and manual review of combos/sets/already-multipacks/weighted KG items.
+## Run locally
 
-## Scale and Vercel
-Legacy validation notes describe 102,652 master rows and 1,565 negative rows. Use inverted indexes, not all-pairs matching. Vercel functions are bounded executions, not always-running workers. Large files should use browser parsing or direct-to-object-storage uploads; do not post huge JSON payloads. OCR compatibility and accuracy must be proven, not assumed.
+Node.js 20+:
 
-Preserve MongoDB collections: `runs`, `batches`, `templates`, `sessions`, `snapshots`, `app_settings`. Do not rename/drop them.
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
 
-## Release acceptance
-Carry the eight Python matcher regression tests into Vitest and compare outputs against Python fixtures. Verify barcode preservation/leading zeroes, seven-decimal cost precision, workbook formulas/styles, GP% = (RSP-COST)/RSP*100, OCR fail-closed reconciliation within AED 0.05, archive/restore/template reload and retention. Never add automatic stock posting.
+Set MONGODB_URI and optionally MONGODB_DB=stockadj for history/settings. Checks:
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+## Matcher safety invariants
+
+- Candidate suggestions only; never post stock adjustments.
+- Use an inverted token index rather than all-pairs comparison.
+- Reject mismatched class, brand, leading product token, explicit size, apparel size, model/style code and product variants.
+- Metadata pack quantity is not proof of an outer SKU: exact normalized description and unit-cost corroboration are required.
+- Explicit pack count, positive active outer stock and stock coverage are required.
+- Combo/set/already-multipack/weighted-KG items are excluded or flagged for manual review.
+- Manual pairings are marked MANUAL_OVERRIDE; operator must verify identity, conversion and costs.
+- iTrade TXT uses PREFIX,barcode,cost,quantity, no header/quotes. Bundle-break single quantity is positive; outer quantity is negative.
+- Preserve barcodes as text, including leading zeroes.
+- GP% = (RSP - COST) / RSP * 100; blank when RSP is missing or zero.
+- OCR import must fail closed unless invoice line totals reconcile to the invoice header within AED 0.05.
+
+## Scale and deployment
+
+Legacy validation notes reference 102,652 master rows and 1,565 negative lines. Keep parsing and matching in the browser where possible; do not send the full master workbook as a huge JSON request to Vercel. Vercel functions have bounded execution time and memory. OCR runtime compatibility, spreadsheet formatting parity, auth and the complete legacy workflows must be validated before production cutover.
+
+Preserve existing MongoDB collections: runs, batches, templates, sessions, snapshots, app_settings, and layouts. Never drop or rename them.

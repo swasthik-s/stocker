@@ -1,0 +1,1 @@
+import {timingSafeEqual} from "node:crypto";export function authorized(req:Request){const expected=process.env.STOCKER_API_TOKEN;if(!expected)return false;const supplied=(req.headers.get("authorization")??"").replace(/^Bearer\s+/i,"");const a=Buffer.from(expected),b=Buffer.from(supplied);return a.length===b.length&&timingSafeEqual(a,b);}
