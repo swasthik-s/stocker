@@ -1,0 +1,1 @@
+import Link from 'next/link';export default function Page(){return <main className="shell"><Link href="/">← Stocker</Link><h1>Master sheet audit</h1><p className="muted">Negative stock, below-cost sales, missing fields and duplicate records.</p><section className="panel">Audit engine and upload UI pending migration.</section></main>}
