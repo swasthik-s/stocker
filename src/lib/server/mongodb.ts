@@ -1,0 +1,1 @@
+import {MongoClient,type Db} from 'mongodb';const uri=process.env.MONGODB_URI;let promise:Promise<MongoClient>|undefined;export async function getDb():Promise<Db>{if(!uri)throw new Error('MONGODB_URI is not configured');if(!promise)promise=new MongoClient(uri,{serverSelectionTimeoutMS:6000}).connect();return (await promise).db(process.env.MONGODB_DB||'stockadj');}
