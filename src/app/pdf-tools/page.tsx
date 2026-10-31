@@ -91,6 +91,7 @@ export default function PdfTools(){
          recognized=result.map((x:any)=>x.text).filter(Boolean).join("\n");
          const positionedWords=result.flatMap((line:any)=>line.words?.length?line.words.map((word:any)=>positioned(word.text,word.box)):[positioned(line.text,line.box)]);
          raw.push(...extractTablesFromTextItems(positionedWords,p.n));
+         if(!recognized.trim()){rapid.dispose();rapid=null;}
         }catch(e){
          const reason=e instanceof Error?e.message:"RapidOCR page processing failed";
          setWarning(`RapidOCR failed on page ${p.n} (${reason}). Falling back to Tesseract OCR; verify decimal prices carefully.`);
