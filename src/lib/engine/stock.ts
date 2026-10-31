@@ -1,6 +1,6 @@
 import type {NegativeLine,MatchCandidate} from '@/lib/domain/types';
 export function parseNumber(value:unknown,fallback=0):number{if(value==null||String(value).trim()==='')return fallback;const n=Number(String(value).replace(/,/g,'').trim());return Number.isFinite(n)?n:fallback;}
-export function normalizeBarcode(value:unknown):string{return String(value??'').trim().replace(/\\.0$/,'');}
+export function normalizeBarcode(value:unknown):string{return String(value??'').trim().replace(/\.0$/,'');}
 export function calculateTotals(lines:NegativeLine[]){const map=new Map<string,{count:number;qty:number;value:number}>();for(const x of lines){const k=x.category||'Uncategorized',v=map.get(k)??{count:0,qty:0,value:0};v.count++;v.qty+=x.qty;v.value+=x.val;map.set(k,v);}return {count:lines.length,quantity:lines.reduce((s,x)=>s+x.qty,0),value:lines.reduce((s,x)=>s+x.val,0),byCategory:[...map].map(([category,v])=>({category,...v}))};}
-export function buildImportRows(prefix:string,items:MatchCandidate[]){return items.filter(x=>x.use!==false&&!x.blocked).flatMap(x=>[{prefix,barcode:x.neg_bc,cost:x.own_cost,quantity:-Math.abs(x.neg_qty)},{prefix,barcode:x.par_bc,cost:x.derived_cost,quantity:Math.abs(x.neg_qty)*x.conv}]);}
-export function formatItradeTxt(prefix:string,items:MatchCandidate[]){return buildImportRows(prefix,items).map(x=>[x.prefix,x.barcode,x.cost.toFixed(7).replace(/0+$/,'').replace(/\\.$/,''),String(x.quantity)].join(',')).join('\\n');}
+export function buildImportRows(prefix:string,items:MatchCandidate[]){return items.filter(x=>x.use!==false&&!x.blocked).flatMap(x=>[{prefix,barcode:x.neg_bc,cost:x.own_cost,quantity:Math.abs(x.neg_qty)},{prefix,barcode:x.par_bc,cost:x.par_cost,quantity:-Math.abs(x.outers_needed)}]);}
+export function formatItradeTxt(prefix:string,items:MatchCandidate[]){return buildImportRows(prefix,items).map(x=>[x.prefix,x.barcode,x.cost.toFixed(7).replace(/0+$/,'').replace(/\.$/,''),String(x.quantity)].join(',')).join('\n');}
