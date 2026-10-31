@@ -88,7 +88,7 @@ export default function PdfTools(){
   }catch(e){setError(e instanceof Error?e.message:"PDF extraction failed")}
   finally{if(worker)await worker.terminate();setBusy(false)}
  }
- function invoiceExcel(){if(!doc)return;save(wb({LINES:lineRows(doc.lines).slice(1),INVOICE:[["Field","Value"],...Object.entries(doc.head)]}),`${stem(doc.name)}.xlsx`,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+ function invoiceExcel(){if(!doc)return;save(wb({LINES:[lineRows(doc.lines)[0].slice(1),...lineRows(doc.lines).slice(1).map(row=>row.slice(1))],INVOICE:[["Field","Value"],...Object.entries(doc.head)]}),`${stem(doc.name)}.xlsx`,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
  function invoiceCsv(){if(!doc)return;save(XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(lineRows(doc.lines))),`${stem(doc.name)}.csv`,"text/csv")}
  function tableExport(kind:"xlsx"|"csv"|"txt"){if(!table||!doc)return;const rows=[table.columns,...table.rows];if(kind==="xlsx")save(wb({TABLE:rows}),`${stem(doc.name)}_table.xlsx`,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");else save(XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(rows),{FS:kind==="txt"?"\t":","}),`${stem(doc.name)}_table.${kind}`,kind==="txt"?"text/plain":"text/csv")}
  function allTables(){if(!doc)return;const sheets:Record<string,unknown[][]>={};tables.forEach((t,i)=>sheets[`T${i+1}_${t.name}`]=[t.columns,...t.rows]);save(wb(sheets),`${stem(doc.name)}_all_tables.xlsx`,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
