@@ -36,7 +36,7 @@ export default function PdfTools(){
  const regexError=useMemo(()=>{try{new RegExp(regex);return""}catch(e){return e instanceof Error?e.message:"Invalid regex"}},[regex]);
  const tables=useMemo(()=>{
   if(!doc)return[] as {name:string;columns:string[];rows:string[][]}[];
-  const raw=doc.tables.map(t=>{const clean=tidyTable(t.rows,dataOnly?2:1);if(clean)return{name:`page ${t.page}, block ${t.block}`,columns:clean.columns,rows:clean.rows};if(dataOnly)return null;const n=Math.max(0,...t.rows.map(r=>r.length));return{name:`page ${t.page}, block ${t.block}`,columns:Array.from({length:n},(_,i)=>`col${i+1}`),rows:t.rows.map(r=>Array.from({length:n},(_,i)=>r[i]??""))}}).filter((x):x is {name:string;columns:string[];rows:string[]}=>!!x);
+  const raw=doc.tables.map(t=>{const clean=tidyTable(t.rows,dataOnly?2:1);if(clean)return{name:`page ${t.page}, block ${t.block}`,columns:clean.columns,rows:clean.rows};if(dataOnly)return null;const n=Math.max(0,...t.rows.map(r=>r.length));return{name:`page ${t.page}, block ${t.block}`,columns:Array.from({length:n},(_,i)=>`col${i+1}`),rows:t.rows.map(r=>Array.from({length:n},(_,i)=>r[i]??""))}}).filter((x):x is {name:string;columns:string[];rows:string[][]}=>x!==null);
   if(!merge)return raw;
   const groups=new Map<string,{name:string;columns:string[];rows:string[][]}>();
   for(const t of raw){const key=t.columns.join("|");const old=groups.get(key);if(old){old.name+=`, ${t.name.replace("page ","")}`;old.rows.push(...t.rows)}else groups.set(key,{...t,rows:[...t.rows]})}
