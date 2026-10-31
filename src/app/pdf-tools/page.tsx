@@ -46,7 +46,7 @@ export default function PdfTools(){
 
  async function extract(){
   if(!files.length)return;setBusy(true);setError("");setWarning("");setDocs([]);setProgress(0);
-  const done:Doc[]=[];let worker:Awaited<ReturnType<typeof import("tesseract.js")["createWorker"]>>|null=null;let rapid:any=null;
+  const done:Doc[]=[];let worker:Awaited<ReturnType<typeof import("tesseract.js")["createWorker"]>>|null=null;
   const positioned=(text:string,box:any)=>{const pts=[box.topLeft,box.topRight,box.bottomRight,box.bottomLeft];const xs=pts.map((p:any)=>p.x),ys=pts.map((p:any)=>p.y);return{str:text,x:Math.min(...xs),y:-Math.min(...ys),width:Math.max(...xs)-Math.min(...xs)}};
   try{
    const pdfjs=await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -66,49 +66,25 @@ export default function PdfTools(){
     }
     const needs=pageData.filter(p=>p.text.trim().length<40),ocr:number[]=[];
     if(needs.length){
-     try{
-      setStage(`Loading RapidOCR models for ${file.name}`);
-      const rapidModule=await import("client-side-ocr");
-      rapid=new rapidModule.RapidOCREngine({lang:"en",version:"PP-OCRv4",modelType:"mobile",enableWordBoxes:true});
-      rapid.setProgressCallback((state:{progress:number})=>setProgress(Math.round(((fi+.5+state.progress*.15)/files.length)*100)));
-      await rapid.initialize();
-     }catch(e){
-      const reason=e instanceof Error?e.message:"RapidOCR initialization failed";
-      setWarning(`RapidOCR could not initialize (${reason}). Falling back to Tesseract OCR; verify decimal prices carefully.`);
-      if(rapid){rapid.dispose();rapid=null}
-     }
      for(const p of needs){
       try{
        const page=await pdf.getPage(p.n),viewport=page.getViewport({scale:Math.max(150,Math.min(400,Number(dpi)||300))/72});
        const canvas=document.createElement("canvas");canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Could not create OCR canvas");
        await page.render({canvasContext:ctx,viewport,canvas} as never).promise;
-       let recognized="";
-       if(rapid){
-        try{
-         const image=ctx.getImageData(0,0,canvas.width,canvas.height);
-         const result=await rapid.process(image.data,canvas.width,canvas.height);
-         recognized=result.map((x:any)=>x.text).filter(Boolean).join("\n");
-         const positionedWords=result.flatMap((line:any)=>line.words?.length?line.words.map((word:any)=>positioned(word.text,word.box)):[positioned(line.text,line.box)]);
-         raw.push(...extractTablesFromTextItems(positionedWords,p.n));
-         if(!recognized.trim()){rapid.dispose();rapid=null;}
-        }catch(e){
-         const reason=e instanceof Error?e.message:"RapidOCR page processing failed";
-         setWarning(`RapidOCR failed on page ${p.n} (${reason}). Falling back to Tesseract OCR; verify decimal prices carefully.`);
-         rapid.dispose();rapid=null;
-        }
+       if(!worker){
+        const tess=await import("tesseract.js");
+        worker=await tess.createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text"&&typeof m.progress==="number")setProgress(Math.round(((fi+.5+m.progress*.45)/files.length)*100))}});
        }
-       if(!rapid&&!recognized){
-        if(!worker){const tess=await import("tesseract.js");worker=await tess.createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text"&&typeof m.progress==="number")setProgress(Math.round(((fi+.5+m.progress*.45)/files.length)*100))}})}
-        const result=await worker.recognize(canvas,{}, {blocks:true});recognized=result.data.text??"";
-        const words=result.data.words??[];
-        raw.push(...extractTablesFromTextItems(words.map(w=>({str:w.text,x:w.bbox.x0,y:-w.bbox.y0,width:Math.max(1,w.bbox.x1-w.bbox.x0)})),p.n));
-       }
+       const result=await worker.recognize(canvas,{}, {blocks:true});
+       const recognized=result.data.text??"";
+       const words=result.data.words??[];
+       raw.push(...extractTablesFromTextItems(words.map(w=>({str:w.text,x:w.bbox.x0,y:-w.bbox.y0,width:Math.max(1,w.bbox.x1-w.bbox.x0)})),p.n));
        p.text=recognized;
        if(recognized.trim()){p.ocr=true;ocr.push(p.n)}
        canvas.width=0;canvas.height=0;
       }catch(e){
-       setWarning(e instanceof Error?`OCR failed on page ${p.n}: ${e.message}`:`OCR failed on page ${p.n}`);
+       setWarning(e instanceof Error?"OCR failed on page "+p.n+": "+e.message:"OCR failed on page "+p.n);
       }
      }
     }
@@ -120,7 +96,7 @@ export default function PdfTools(){
    }
    setDocs(done);setDocName(done[0]?.name??"");setPagesSelected(done[0]?.pages.map(x=>x.n)??[]);setStage("Extraction complete");
   }catch(e){setError(e instanceof Error?e.message:"PDF extraction failed")}
-  finally{if(rapid)rapid.dispose();if(worker)await worker.terminate();setBusy(false)}
+  finally{if(worker)await worker.terminate();setBusy(false)}
  }
  function invoiceExcel(){if(!doc)return;save(wb({LINES:[lineRows(doc.lines)[0].slice(1),...lineRows(doc.lines).slice(1).map(row=>row.slice(1))],INVOICE:[["Field","Value"],...Object.entries(doc.head)]}),`${stem(doc.name)}.xlsx`,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
  function invoiceCsv(){if(!doc)return;save(XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(lineRows(doc.lines))),`${stem(doc.name)}.csv`,"text/csv")}
