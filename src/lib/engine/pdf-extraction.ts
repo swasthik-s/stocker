@@ -99,10 +99,11 @@ export function linesFromText(text: string, trailing = 6): InvoiceLine[] {
     const tail: string[] = [];
     for (const token of [...tokens].reverse()) { if (NUMTOK.test(token)) tail.push(token); else break; }
     if (tail.length < trailing) continue;
-    const values = tail.slice(0, trailing).reverse().map(num);
+    const selectedTail = tail.slice(0, trailing).reverse();
+    const values = selectedTail.map(num);
     const [qty, unitPrice, amount, , vatAmt, afterVat] = values;
     const sl = barcodeIndex > 0 && /^\d+$/.test(tokens[0]) ? num(tokens[0]) : null;
-    const description = tokens.slice(barcodeIndex + 1, tokens.length - tail.length).join(" ");
+    const description = tokens.slice(barcodeIndex + 1, tokens.length - selectedTail.length).join(" ");
     out.push({ SL: sl, Barcode: tokens[barcodeIndex], Description: description, Unit: "", Qty: qty, UnitPrice: unitPrice, Amount: amount, VatAmt: vatAmt, AfterVat: afterVat });
   }
   const seen = new Set<string>();
