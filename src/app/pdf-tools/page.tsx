@@ -1,6 +1,6 @@
 "use client";
 import {useMemo,useState} from "react";
-import {Download,FileText,ScanText,ShieldAlert} from "lucide-react";
+import {FileText,ScanText,ShieldAlert} from "lucide-react";
 import * as XLSX from "xlsx";
 import {Alert,AlertDescription,AlertTitle} from "@/components/ui/alert";
 import {Badge} from "@/components/ui/badge";
@@ -36,7 +36,7 @@ export default function PdfTools(){
  const regexError=useMemo(()=>{try{new RegExp(regex);return""}catch(e){return e instanceof Error?e.message:"Invalid regex"}},[regex]);
  const tables=useMemo(()=>{
   if(!doc)return[] as {name:string;columns:string[];rows:string[][]}[];
-  const raw=doc.tables.map(t=>{const clean=tidyTable(t.rows,dataOnly?2:1);if(clean)return{name:`page ${t.page}`,columns:clean.columns,rows:clean.rows};if(dataOnly)return null;const n=Math.max(0,...t.rows.map(r=>r.length));return{name:`page ${t.page}`,columns:Array.from({length:n},(_,i)=>`col${i+1}`),rows:t.rows.map(r=>Array.from({length:n},(_,i)=>r[i]??""))}}).filter((x):x is {name:string;columns:string[];rows:string[]}=>!!x);
+  const raw=doc.tables.map(t=>{const clean=tidyTable(t.rows,dataOnly?2:1);if(clean)return{name:`page ${t.page}, block ${t.block}`,columns:clean.columns,rows:clean.rows};if(dataOnly)return null;const n=Math.max(0,...t.rows.map(r=>r.length));return{name:`page ${t.page}, block ${t.block}`,columns:Array.from({length:n},(_,i)=>`col${i+1}`),rows:t.rows.map(r=>Array.from({length:n},(_,i)=>r[i]??""))}}).filter((x):x is {name:string;columns:string[];rows:string[]}=>!!x);
   if(!merge)return raw;
   const groups=new Map<string,{name:string;columns:string[];rows:string[][]}>();
   for(const t of raw){const key=t.columns.join("|");const old=groups.get(key);if(old){old.name+=`, ${t.name.replace("page ","")}`;old.rows.push(...t.rows)}else groups.set(key,{...t,rows:[...t.rows]})}
@@ -72,7 +72,7 @@ export default function PdfTools(){
        const canvas=document.createElement("canvas");canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
        const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Could not create OCR canvas");
        await page.render({canvasContext:ctx,viewport,canvas} as never).promise;
-       const result=await worker.recognize(canvas);p.text=result.data.text??"";
+       const result=await worker.recognize(canvas, {}, { blocks: true });p.text=result.data.text??"";
        if(p.text.trim()){p.ocr=true;ocr.push(p.n);const words=result.data.words??[];raw.push(...extractTablesFromTextItems(words.map(w=>({str:w.text,x:w.bbox.x0,y:-w.bbox.y0,width:Math.max(1,w.bbox.x1-w.bbox.x0)})),p.n))}
        canvas.width=0;canvas.height=0;
       }
@@ -96,7 +96,7 @@ export default function PdfTools(){
  const ocr=!!doc?.ocr.length,blocked=ocr&&!check?.totalMatches;
  return <div className="mx-auto w-full max-w-7xl space-y-6">
   <div className="flex flex-wrap items-end justify-between gap-3"><div><Badge variant="secondary">PDF utilities</Badge><h1 className="mt-2 text-2xl font-semibold tracking-tight">PDF to Excel / TXT</h1><p className="mt-1 text-sm text-muted-foreground">Invoice extraction, table cleanup, scanned-page OCR and iTrade preparation. Processing stays in your browser.</p></div>
-   {docs.length>0&&<Select value={doc?.name??""} onValueChange={setDocName}><SelectTrigger className="w-64"><SelectValue placeholder="Choose extracted PDF"/></SelectTrigger><SelectContent>{docs.map(d=><SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>)}</SelectContent></Select>}
+   {docs.length>0&&<Select value={doc?.name??""} onValueChange={value=>{setDocName(value);setPagesSelected(docs.find(x=>x.name===value)?.pages.map(x=>x.n)??[]);setTableName("")}}><SelectTrigger className="w-64"><SelectValue placeholder="Choose extracted PDF"/></SelectTrigger><SelectContent>{docs.map(d=><SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>)}</SelectContent></Select>}
   </div>
   <Card><CardHeader><CardTitle className="text-base">PDF input</CardTitle><CardDescription>Upload one or more PDFs. Pages with fewer than 40 selectable characters are automatically OCR'd.</CardDescription></CardHeader><CardContent className="space-y-4">
    <div className="grid gap-2"><Label htmlFor="pdf-files">PDF files</Label><Input id="pdf-files" type="file" accept=".pdf,application/pdf" multiple onChange={e=>{setFiles(Array.from(e.target.files??[]));setDocs([]);setError("");setWarning("")}}/>{files.length>0&&<p className="text-xs text-muted-foreground">{files.map(f=>f.name).join(" · ")}</p>}</div>
