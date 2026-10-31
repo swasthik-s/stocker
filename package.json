@@ -29,7 +29,11 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.545.0",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^4.1.16",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-tabs": "^1.1.13"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
